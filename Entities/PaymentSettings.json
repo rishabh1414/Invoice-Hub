@@ -1,0 +1,37 @@
+{
+  "name": "PaymentSettings",
+  "type": "object",
+  "properties": {
+    "payment_methods": {
+      "type": "array",
+      "description": "Saved payment methods",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "wise",
+              "paypal",
+              "wire_transfer",
+              "other"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "is_link": {
+            "type": "boolean"
+          },
+          "qr_code_url": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": []
+}

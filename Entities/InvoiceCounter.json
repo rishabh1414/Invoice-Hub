@@ -1,0 +1,8 @@
+export const defaultInvoiceCounter = {
+  last_number: 0,
+};
+
+export const createInvoiceCounterPayload = (overrides = {}) => ({
+  ...defaultInvoiceCounter,
+  ...overrides,
+});

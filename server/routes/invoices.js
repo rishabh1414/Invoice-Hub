@@ -30,6 +30,11 @@ const sanitizePaymentDetails = (details = []) =>
     value: detail.value || "",
     is_link: detail.is_link !== false,
     qr_code_url: detail.qr_code_url || "",
+    qr_code_data: detail.qr_code_data || "",
+    bank_name: detail.bank_name || "",
+    account_number: detail.account_number || "",
+    swift_code: detail.swift_code || "",
+    routing_number: detail.routing_number || "",
   }));
 
 router.get("/", authMiddleware, async (req, res) => {

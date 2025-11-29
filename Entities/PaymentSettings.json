@@ -28,7 +28,15 @@
           },
           "qr_code_url": {
             "type": "string"
-          }
+          },
+          "qr_code_data": {
+            "type": "string",
+            "description": "Base64 encoded QR code image"
+          },
+          "bank_name": { "type": "string" },
+          "account_number": { "type": "string" },
+          "swift_code": { "type": "string" },
+          "routing_number": { "type": "string" }
         }
       }
     }

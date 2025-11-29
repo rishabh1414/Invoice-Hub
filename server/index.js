@@ -19,7 +19,7 @@ async function start() {
     await connectToDatabase();
 
     const server = express();
-    server.use(express.json({ limit: "2mb" }));
+    server.use(express.json({ limit: "8mb" }));
     server.use(cookieParser());
 
     // API routes

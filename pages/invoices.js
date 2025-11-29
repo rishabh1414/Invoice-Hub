@@ -164,10 +164,44 @@ export default function Invoices() {
     updateMutation.mutate({ id: invoiceId, data: { status: newStatus } });
   };
 
-  const handleDelete = (invoiceId) => {
-    if (window.confirm("Are you sure you want to delete this invoice?")) {
-      deleteMutation.mutate(invoiceId);
-    }
+  const handleDelete = (invoice) => {
+    toast.custom(
+      (t) => (
+        <div className="w-[320px] rounded-lg border border-red-100 bg-white shadow-lg shadow-red-100">
+          <div className="p-4 space-y-2">
+            <p className="text-sm font-semibold text-gray-900">
+              Delete invoice {invoice.invoice_number || ""}?
+            </p>
+          <p className="text-xs text-gray-600">
+            This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 border-gray-200"
+              onClick={() => toast.dismiss(t.id)}
+            >
+              Keep it
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className="h-8 bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => {
+                deleteMutation.mutate(invoice._id);
+                toast.dismiss(t.id);
+              }}
+            >
+              Delete
+            </Button>
+          </div>
+          </div>
+        </div>
+      ),
+      { duration: 8000 }
+    );
   };
 
   const handlePreview = (invoice) => {
@@ -430,7 +464,7 @@ export default function Invoices() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDelete(invoice._id)}
+                            onClick={() => handleDelete(invoice)}
                             className="text-red-500 hover:bg-red-50 h-9 w-9"
                             title="Delete"
                           >

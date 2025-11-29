@@ -254,7 +254,7 @@ export default function CreateInvoice() {
               .border-t { border-top: 1px solid #e5e7eb; }
               .border-t-2 { border-top: 2px solid #d1d5db; }
               h1 { font-size: 48px; margin-bottom: 16px; }
-              img { max-width: 80px; max-height: 80px; object-fit: contain; }
+              img { max-width: 120px; max-height: 120px; object-fit: contain; }
               @media print { 
                 body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } 
                 @page { margin: 15mm; }

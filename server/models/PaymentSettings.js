@@ -7,6 +7,11 @@ const PaymentMethodSchema = new mongoose.Schema(
     value: { type: String, default: "" },
     is_link: { type: Boolean, default: true },
     qr_code_url: { type: String, default: "" },
+    qr_code_data: { type: String, default: "" },
+    bank_name: { type: String, default: "" },
+    account_number: { type: String, default: "" },
+    swift_code: { type: String, default: "" },
+    routing_number: { type: String, default: "" },
   },
   { _id: false }
 );

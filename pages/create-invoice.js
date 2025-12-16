@@ -191,11 +191,29 @@ export default function CreateInvoice() {
   }
 
   const handleSave = () => {
-    if (!invoice.client_name) {
+    const clientName = (invoice.client_name || "").trim();
+    if (!clientName) {
       toast.error("Please enter a client name");
       return;
     }
-    saveMutation.mutate(invoice);
+    const hasLineItems = (invoice.line_items || []).some((item) => {
+      const hasText = (item.description || "").trim().length > 0;
+      const hasTime =
+        Number(item.hours) > 0 || Number(item.minutes) > 0 || Number(item.rate) > 0;
+      const hasTotal = Number(item.total) > 0;
+      return hasText || hasTime || hasTotal;
+    });
+    if (!hasLineItems) {
+      toast.error("Add at least one line item");
+      setActiveTab("edit");
+      return;
+    }
+
+    const payload = {
+      ...invoice,
+      client_name: clientName,
+    };
+    saveMutation.mutate(payload);
   };
 
   const getFileName = () => {
@@ -207,67 +225,17 @@ export default function CreateInvoice() {
   };
 
   const downloadAsPDF = () => {
-    setActiveTab("preview");
-    setTimeout(() => {
-      const printContents = invoiceRef.current?.innerHTML;
-      const printWindow = window.open("", "_blank");
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>${getFileName()}</title>
-            <style>
-              @page { size: A4; margin: 20mm; }
-              * { box-sizing: border-box; margin: 0; padding: 0; }
-              body { 
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-                padding: 40px;
-                width: 210mm;
-                min-height: 297mm;
-                background: white;
-              }
-              .text-green-500 { color: #22c55e; }
-              .text-blue-600 { color: #2563eb; }
-              .text-gray-900 { color: #111827; }
-              .text-gray-600 { color: #4b5563; }
-              .text-gray-500 { color: #6b7211; }
-              .font-bold { font-weight: 700; }
-              .font-semibold { font-weight: 600; }
-              .font-medium { font-weight: 500; }
-              table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-              th, td { padding: 16px 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
-              th { font-weight: 600; color: #4b5563; background: #f9fafb; }
-              a { color: #2563eb; text-decoration: none; }
-              .bg-gray-100 { background: #f3f4f6; padding: 10px 14px; border-radius: 6px; display: inline-block; }
-              .bg-green-100 { background: #dcfce7; color: #15803d; padding: 6px 16px; border-radius: 6px; font-weight: 600; }
-              .bg-yellow-100 { background: #fef3c7; color: #b45309; padding: 6px 16px; border-radius: 6px; font-weight: 600; }
-              .bg-red-100 { background: #fee2e2; color: #dc2626; padding: 6px 16px; border-radius: 6px; font-weight: 600; }
-              .space-y-1 > * + * { margin-top: 4px; }
-              .space-y-3 > * + * { margin-top: 12px; }
-              .mb-4 { margin-bottom: 16px; }
-              .mb-6 { margin-bottom: 24px; }
-              .mb-8 { margin-bottom: 32px; }
-              .mt-4 { margin-top: 16px; }
-              .mt-6 { margin-top: 24px; }
-              .my-6 { margin-top: 24px; margin-bottom: 24px; }
-              .py-2 { padding-top: 8px; padding-bottom: 8px; }
-              .py-3 { padding-top: 12px; padding-bottom: 12px; }
-              .border-t { border-top: 1px solid #e5e7eb; }
-              .border-t-2 { border-top: 2px solid #d1d5db; }
-              h1 { font-size: 48px; margin-bottom: 16px; }
-              img { max-width: 120px; max-height: 120px; object-fit: contain; }
-              @media print { 
-                body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } 
-                @page { margin: 15mm; }
-              }
-            </style>
-          </head>
-          <body>${printContents}</body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.print();
-    }, 100);
-    toast.success("Print dialog opened - Save as PDF");
+    const capture = async () => {
+      try {
+        const { generateInvoicePdf } = await import("@/utils/generateInvoicePdf");
+        await generateInvoicePdf(invoice, getFileName());
+        toast.success("PDF downloaded");
+      } catch (error) {
+        console.error(error);
+        toast.error("Could not generate PDF");
+      }
+    };
+    capture();
   };
 
   const downloadAsPNG = () => {
@@ -275,10 +243,17 @@ export default function CreateInvoice() {
     setTimeout(async () => {
       try {
         const { default: html2canvas } = await import("html2canvas");
-        const canvas = await html2canvas(invoiceRef.current, {
+        const target = invoiceRef.current;
+        const width = target?.scrollWidth || target?.offsetWidth || 0;
+        const height = target?.scrollHeight || target?.offsetHeight || 0;
+        const canvas = await html2canvas(target, {
           scale: 2,
           useCORS: true,
           backgroundColor: "#ffffff",
+          width,
+          height,
+          windowWidth: width,
+          windowHeight: height,
         });
         const link = document.createElement("a");
         link.download = `${getFileName()}.png`;

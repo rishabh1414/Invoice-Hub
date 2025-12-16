@@ -6,22 +6,32 @@ const { authMiddleware } = require("../middleware/auth");
 
 const router = express.Router();
 const sanitizeLineItems = (items = []) =>
-  (items || []).map((item) => ({
-    description: item.description || "",
-    hours: Number(item.hours) || 0,
-    minutes: Number(item.minutes) || 0,
-    rate: Number(item.rate) || 0,
-    total: Number(item.total) || 0,
-    link: item.link || "",
-    link_label: item.link_label || "",
-    note: item.note || "",
-  }));
+  (items || [])
+    .filter((item) => {
+      const hasText = (item.description || "").trim().length > 0;
+      const hasTime =
+        Number(item.hours) > 0 || Number(item.minutes) > 0 || Number(item.rate) > 0;
+      const hasTotal = Number(item.total) > 0;
+      return hasText || hasTime || hasTotal;
+    })
+    .map((item) => ({
+      description: item.description || "",
+      hours: Number(item.hours) || 0,
+      minutes: Number(item.minutes) || 0,
+      rate: Number(item.rate) || 0,
+      total: Number(item.total) || 0,
+      link: item.link || "",
+      link_label: item.link_label || "",
+      note: item.note || "",
+    }));
 
 const sanitizeAdjustments = (adjustments = []) =>
-  (adjustments || []).map((adj) => ({
-    description: adj.description || "",
-    amount: Number(adj.amount) || 0,
-  }));
+  (adjustments || [])
+    .filter((adj) => (adj.description || "").trim().length > 0 || Number(adj.amount) !== 0)
+    .map((adj) => ({
+      description: adj.description || "",
+      amount: Number(adj.amount) || 0,
+    }));
 
 const sanitizePaymentDetails = (details = []) =>
   (details || []).map((detail) => ({
@@ -69,6 +79,7 @@ router.post("/", authMiddleware, async (req, res) => {
   try {
     const payload = req.body || {};
     const {
+      client_name,
       invoice_number,
       line_items,
       adjustments,
@@ -79,9 +90,18 @@ router.post("/", authMiddleware, async (req, res) => {
       ...rest
     } = payload;
 
+    const trimmedClientName = (client_name || "").trim();
+    if (!trimmedClientName) {
+      return res.status(400).json({ error: "Client name is required" });
+    }
+
     const sanitizedLineItems = sanitizeLineItems(line_items);
     const sanitizedAdjustments = sanitizeAdjustments(adjustments);
     const sanitizedPaymentDetails = sanitizePaymentDetails(payment_details);
+
+    if (sanitizedLineItems.length === 0) {
+      return res.status(400).json({ error: "Add at least one line item" });
+    }
 
     const subtotal =
       typeof payload.subtotal === "number"
@@ -121,7 +141,8 @@ router.post("/", authMiddleware, async (req, res) => {
       line_items: sanitizedLineItems,
       adjustments: sanitizedAdjustments,
       payment_details: sanitizedPaymentDetails,
-      submitted_date,
+      client_name: trimmedClientName,
+      submitted_date: submitted_date || new Date(),
       date_range_start,
       date_range_end,
       subtotal,
@@ -144,19 +165,42 @@ router.post("/", authMiddleware, async (req, res) => {
 router.put("/:id", authMiddleware, async (req, res) => {
   try {
     const payload = req.body || {};
-    const {
-      line_items,
-      adjustments,
-      payment_details,
-      submitted_date,
-      date_range_start,
-      date_range_end,
-      ...rest
-    } = payload;
+    const existingInvoice = await Invoice.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
 
-    const sanitizedLineItems = sanitizeLineItems(line_items);
-    const sanitizedAdjustments = sanitizeAdjustments(adjustments);
-    const sanitizedPaymentDetails = sanitizePaymentDetails(payment_details);
+    if (!existingInvoice) {
+      return res.status(404).json({ error: "Invoice not found" });
+    }
+
+    // Use stored values as fallback so partial updates (like status changes) don't erase invoice details
+    const trimmedClientName =
+      (payload.client_name ?? existingInvoice.client_name ?? "").trim();
+    if (!trimmedClientName) {
+      return res.status(400).json({ error: "Client name is required" });
+    }
+
+    const lineItemsSource =
+      payload.line_items !== undefined && payload.line_items !== null
+        ? payload.line_items
+        : existingInvoice.line_items;
+    const adjustmentsSource =
+      payload.adjustments !== undefined && payload.adjustments !== null
+        ? payload.adjustments
+        : existingInvoice.adjustments;
+    const paymentDetailsSource =
+      payload.payment_details !== undefined && payload.payment_details !== null
+        ? payload.payment_details
+        : existingInvoice.payment_details;
+
+    const sanitizedLineItems = sanitizeLineItems(lineItemsSource);
+    const sanitizedAdjustments = sanitizeAdjustments(adjustmentsSource);
+    const sanitizedPaymentDetails = sanitizePaymentDetails(paymentDetailsSource);
+
+    if (sanitizedLineItems.length === 0) {
+      return res.status(400).json({ error: "Add at least one line item" });
+    }
 
     const subtotal =
       typeof payload.subtotal === "number"
@@ -174,13 +218,23 @@ router.put("/:id", authMiddleware, async (req, res) => {
         line_items: sanitizedLineItems,
         adjustments: sanitizedAdjustments,
         payment_details: sanitizedPaymentDetails,
-        submitted_date,
-        date_range_start,
-        date_range_end,
+        client_name: trimmedClientName,
+        submitted_date:
+          payload.submitted_date ||
+          existingInvoice.submitted_date ||
+          new Date(),
+        date_range_start:
+          payload.date_range_start ?? existingInvoice.date_range_start ?? null,
+        date_range_end:
+          payload.date_range_end ?? existingInvoice.date_range_end ?? null,
         subtotal,
         total,
-        invoice_style: payload.invoice_style || req.user.invoice_template,
-        ...rest,
+        invoice_style:
+          payload.invoice_style ||
+          existingInvoice.invoice_style ||
+          req.user.invoice_template,
+        status: payload.status || existingInvoice.status,
+        notes: payload.notes ?? existingInvoice.notes ?? "",
       },
       { new: true }
     );

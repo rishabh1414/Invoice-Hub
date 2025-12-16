@@ -210,47 +210,21 @@ export default function Invoices() {
   };
 
   const handleDownload = (invoice) => {
-    setSelectedInvoice(invoice);
-    setPreviewOpen(true);
-    setTimeout(() => {
-      const dateStr = invoice.submitted_date
-        ? format(new Date(invoice.submitted_date), "yyyy-MM-dd")
-        : format(new Date(), "yyyy-MM-dd");
-      const fileName = `${invoice.invoice_number}_${dateStr}`;
-      const previewEl = document.querySelector("[data-invoice-preview]");
-      if (previewEl) {
-        const printWindow = window.open("", "_blank");
-        printWindow.document.write(`
-          <html>
-            <head>
-              <title>${fileName}</title>
-              <style>
-                @page { size: A4; margin: 20mm; }
-                * { box-sizing: border-box; margin: 0; padding: 0; }
-                body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px; width: 210mm; min-height: 297mm; background: white; }
-                .text-green-500 { color: #22c55e; }
-                .text-blue-600 { color: #2563eb; }
-                .text-gray-900 { color: #111827; }
-                .text-gray-600 { color: #4b5563; }
-                .text-gray-500 { color: #6b7211; }
-                .font-bold { font-weight: 700; }
-                .font-semibold { font-weight: 600; }
-                .font-medium { font-weight: 500; }
-                table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-                th, td { padding: 16px 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
-                th { font-weight: 600; color: #4b5563; background: #f9fafb; }
-                a { color: #2563eb; text-decoration: none; }
-                img { max-width: 100%; height: auto; object-fit: contain; }
-                @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
-              </style>
-            </head>
-            <body>${previewEl.innerHTML}</body>
-          </html>
-        `);
-        printWindow.document.close();
-        printWindow.print();
+    const download = async () => {
+      try {
+        const { generateInvoicePdf } = await import("@/utils/generateInvoicePdf");
+        const dateStr = invoice.submitted_date
+          ? format(new Date(invoice.submitted_date), "yyyy-MM-dd")
+          : format(new Date(), "yyyy-MM-dd");
+        const fileName = `${invoice.invoice_number}_${dateStr}`;
+        await generateInvoicePdf(invoice, fileName);
+        toast.success("PDF downloaded");
+      } catch (error) {
+        console.error(error);
+        toast.error("Could not generate PDF");
       }
-    }, 300);
+    };
+    download();
   };
 
   const stats = {
